@@ -126,9 +126,9 @@ export default {
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out',
-				'racing-pulse': 'racing-pulse 2s ease-in-out infinite',
+				'racing-pulse': 'racing-pulse 4s ease-in-out infinite',
 				'speed-line': 'speed-line 1.5s ease-in-out infinite',
-				'glow-pulse': 'glow-pulse 2s ease-in-out infinite'
+				'glow-pulse': 'glow-pulse 4s ease-in-out infinite'
 			},
 			backgroundImage: {
 				'gradient-racing': 'var(--gradient-racing)',

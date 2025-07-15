@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { MapPin, Timer, Trophy, Users, Zap, Navigation } from "lucide-react";
+import { Link } from "react-router-dom";
 import heroImage from "@/assets/racing-hero.jpg";
 
 const Index = () => {
@@ -40,14 +41,18 @@ const Index = () => {
               Compete with racers worldwide and climb the leaderboards.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Button variant="racing" size="lg" className="w-full sm:w-auto">
-                <MapPin className="w-5 h-5" />
-                Create Your First Track
-              </Button>
-              <Button variant="hero" size="lg" className="w-full sm:w-auto">
-                <Navigation className="w-5 h-5" />
-                Explore Tracks
-              </Button>
+              <Link to="/create-track">
+                <Button variant="racing" size="lg" className="w-full sm:w-auto">
+                  <MapPin className="w-5 h-5" />
+                  Create Your First Track
+                </Button>
+              </Link>
+              <Link to="/explore-tracks">
+                <Button variant="hero" size="lg" className="w-full sm:w-auto">
+                  <Navigation className="w-5 h-5" />
+                  Explore Tracks
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
@@ -146,13 +151,17 @@ const Index = () => {
             your custom tracks today.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Button variant="racing" size="lg" className="w-full sm:w-auto">
-              <MapPin className="w-5 h-5" />
-              Get Started Free
-            </Button>
-            <Button variant="outline" size="lg" className="w-full sm:w-auto">
-              Learn More
-            </Button>
+            <Link to="/create-track">
+              <Button variant="racing" size="lg" className="w-full sm:w-auto">
+                <MapPin className="w-5 h-5" />
+                Get Started Free
+              </Button>
+            </Link>
+            <Link to="/explore-tracks">
+              <Button variant="outline" size="lg" className="w-full sm:w-auto">
+                Learn More
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
