@@ -16,6 +16,8 @@ import {
   Ruler
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import MapBox from "@/components/ui/MapBox";
+
 
 const CreateTrack = () => {
   return (
@@ -34,7 +36,7 @@ const CreateTrack = () => {
               <div className="w-8 h-8 bg-gradient-racing rounded-lg flex items-center justify-center">
                 <Zap className="w-5 h-5 text-primary-foreground" />
               </div>
-              <span className="text-xl font-bold text-foreground">RaceTrack</span>
+              <span className="text-xl font-bold text-foreground">Segmentor</span>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -83,22 +85,7 @@ const CreateTrack = () => {
               </div>
 
               {/* Map Placeholder */}
-              <div className="h-[500px] bg-gradient-to-br from-background via-muted/30 to-primary/5 flex items-center justify-center relative overflow-hidden">
-                <div className="absolute inset-0 bg-grid-pattern opacity-10"></div>
-                <div className="text-center z-10">
-                  <div className="w-20 h-20 bg-gradient-primary rounded-full flex items-center justify-center mb-4 mx-auto animate-glow-pulse">
-                    <MapPin className="w-10 h-10 text-primary-foreground" />
-                  </div>
-                  <h3 className="text-xl font-semibold mb-2 text-foreground">Interactive Map Coming Soon</h3>
-                  <p className="text-muted-foreground mb-4 max-w-md">
-                    Click to set your start point, then drag to create your custom racing route
-                  </p>
-                  <Button variant="racing">
-                    <Plus className="w-4 h-4" />
-                    Enable GPS & Start Creating
-                  </Button>
-                </div>
-              </div>
+              <MapBox />
 
               {/* Map Instructions */}
               <div className="p-4 bg-muted/30">
