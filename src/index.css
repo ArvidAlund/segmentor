@@ -2,41 +2,66 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
+/* Racing Track App Design System - Athletic & Modern
+All colors MUST be HSL. Racing-inspired with electric blue and neon green accents.
 */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Dark athletic theme */
+    --background: 220 20% 8%;
+    --foreground: 210 40% 98%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 220 20% 10%;
+    --card-foreground: 210 40% 98%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 220 20% 10%;
+    --popover-foreground: 210 40% 98%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Electric blue racing primary */
+    --primary: 200 95% 60%;
+    --primary-foreground: 220 20% 8%;
+    --primary-glow: 200 100% 70%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Dark secondary */
+    --secondary: 220 15% 15%;
+    --secondary-foreground: 210 40% 98%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 220 15% 15%;
+    --muted-foreground: 215 25% 65%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Neon green accent */
+    --accent: 120 85% 55%;
+    --accent-foreground: 220 20% 8%;
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 220 15% 20%;
+    --input: 220 15% 15%;
+    --ring: 200 95% 60%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
+
+    /* Racing-specific colors */
+    --racing-success: 120 85% 55%;
+    --racing-warning: 45 95% 60%;
+    --racing-speed: 280 95% 70%;
+    
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(200 95% 60%), hsl(200 100% 70%));
+    --gradient-racing: linear-gradient(135deg, hsl(200 95% 60%), hsl(120 85% 55%));
+    --gradient-speed: linear-gradient(135deg, hsl(280 95% 70%), hsl(200 95% 60%));
+    --gradient-hero: linear-gradient(135deg, hsl(220 20% 8%) 0%, hsl(220 25% 12%) 50%, hsl(200 95% 60%) 100%);
+    
+    /* Shadows with glow effects */
+    --shadow-racing: 0 0 30px hsl(200 95% 60% / 0.3);
+    --shadow-accent: 0 0 20px hsl(120 85% 55% / 0.3);
+    --shadow-card: 0 10px 30px -5px hsl(220 20% 5% / 0.5);
+    
+    /* Animations */
+    --transition-racing: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --pulse-duration: 2s;
 
     --sidebar-background: 0 0% 98%;
 

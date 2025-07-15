@@ -26,7 +26,8 @@ export default {
 				foreground: 'hsl(var(--foreground))',
 				primary: {
 					DEFAULT: 'hsl(var(--primary))',
-					foreground: 'hsl(var(--primary-foreground))'
+					foreground: 'hsl(var(--primary-foreground))',
+					glow: 'hsl(var(--primary-glow))'
 				},
 				secondary: {
 					DEFAULT: 'hsl(var(--secondary))',
@@ -51,6 +52,11 @@ export default {
 				card: {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
+				},
+				racing: {
+					success: 'hsl(var(--racing-success))',
+					warning: 'hsl(var(--racing-warning))',
+					speed: 'hsl(var(--racing-speed))'
 				},
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
@@ -84,11 +90,56 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'racing-pulse': {
+					'0%, 100%': {
+						transform: 'scale(1)',
+						opacity: '1'
+					},
+					'50%': {
+						transform: 'scale(1.05)',
+						opacity: '0.8'
+					}
+				},
+				'speed-line': {
+					'0%': {
+						transform: 'translateX(-100%)',
+						opacity: '0'
+					},
+					'50%': {
+						opacity: '1'
+					},
+					'100%': {
+						transform: 'translateX(100%)',
+						opacity: '0'
+					}
+				},
+				'glow-pulse': {
+					'0%, 100%': {
+						boxShadow: '0 0 20px hsl(var(--primary) / 0.3)'
+					},
+					'50%': {
+						boxShadow: '0 0 40px hsl(var(--primary) / 0.6)'
+					}
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'racing-pulse': 'racing-pulse 2s ease-in-out infinite',
+				'speed-line': 'speed-line 1.5s ease-in-out infinite',
+				'glow-pulse': 'glow-pulse 2s ease-in-out infinite'
+			},
+			backgroundImage: {
+				'gradient-racing': 'var(--gradient-racing)',
+				'gradient-primary': 'var(--gradient-primary)',
+				'gradient-speed': 'var(--gradient-speed)',
+				'gradient-hero': 'var(--gradient-hero)'
+			},
+			boxShadow: {
+				'racing': 'var(--shadow-racing)',
+				'accent': 'var(--shadow-accent)',
+				'card': 'var(--shadow-card)'
 			}
 		}
 	},
