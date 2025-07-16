@@ -42,7 +42,7 @@ import {
     </svg>
   );
   
-  const libraries = ["places"] as const;
+  const libraries: ("places")[] = ["places"];
   const mapContainerStyle = { width: "100%", height: "500px" };
   const center = { lat: 59.3293, lng: 18.0686 };
   
