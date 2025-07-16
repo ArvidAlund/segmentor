@@ -10,6 +10,7 @@ import ExploreTracks from "./pages/ExploreTracks";
 import Profile from "./pages/Profile";
 import Community from "./pages/Community";
 import Auth from "./pages/Auth";
+import Challenges from "./pages/Challenges";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/create-track" element={<CreateTrack />} />
             <Route path="/explore-tracks" element={<ExploreTracks />} />
             <Route path="/community" element={<Community />} />
+            <Route path="/challenges" element={<Challenges />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

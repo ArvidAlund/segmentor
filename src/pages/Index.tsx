@@ -44,6 +44,9 @@ const Index = () => {
                   <Link to="/community">
                     <Button variant="outline" size="sm">Community</Button>
                   </Link>
+                  <Link to="/challenges">
+                    <Button variant="outline" size="sm">Challenges</Button>
+                  </Link>
                   <Button variant="outline" size="sm" onClick={signOut}>
                     <LogOut className="w-4 h-4 mr-2" />
                     Sign Out

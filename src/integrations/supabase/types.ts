@@ -14,6 +14,180 @@ export type Database = {
   }
   public: {
     Tables: {
+      achievements: {
+        Row: {
+          achievement_type: string | null
+          created_at: string
+          criteria: Json
+          description: string
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          points: number | null
+          rarity: string | null
+        }
+        Insert: {
+          achievement_type?: string | null
+          created_at?: string
+          criteria: Json
+          description: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          points?: number | null
+          rarity?: string | null
+        }
+        Update: {
+          achievement_type?: string | null
+          created_at?: string
+          criteria?: Json
+          description?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          points?: number | null
+          rarity?: string | null
+        }
+        Relationships: []
+      }
+      challenge_completions: {
+        Row: {
+          challenge_id: string
+          completed_at: string
+          completion_value: number
+          id: string
+          points_earned: number | null
+          ranking_position: number | null
+          user_id: string
+        }
+        Insert: {
+          challenge_id: string
+          completed_at?: string
+          completion_value: number
+          id?: string
+          points_earned?: number | null
+          ranking_position?: number | null
+          user_id: string
+        }
+        Update: {
+          challenge_id?: string
+          completed_at?: string
+          completion_value?: number
+          id?: string
+          points_earned?: number | null
+          ranking_position?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_completions_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      challenge_participants: {
+        Row: {
+          challenge_id: string
+          id: string
+          joined_at: string
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          challenge_id: string
+          id?: string
+          joined_at?: string
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          challenge_id?: string
+          id?: string
+          joined_at?: string
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_participants_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      challenges: {
+        Row: {
+          challenge_type: string | null
+          created_at: string
+          creator_id: string
+          current_participants: number | null
+          description: string | null
+          difficulty_level: string | null
+          end_date: string
+          id: string
+          is_public: boolean | null
+          max_participants: number | null
+          name: string
+          reward_points: number | null
+          route_id: string
+          start_date: string
+          target_value: number | null
+          updated_at: string
+        }
+        Insert: {
+          challenge_type?: string | null
+          created_at?: string
+          creator_id: string
+          current_participants?: number | null
+          description?: string | null
+          difficulty_level?: string | null
+          end_date: string
+          id?: string
+          is_public?: boolean | null
+          max_participants?: number | null
+          name: string
+          reward_points?: number | null
+          route_id: string
+          start_date: string
+          target_value?: number | null
+          updated_at?: string
+        }
+        Update: {
+          challenge_type?: string | null
+          created_at?: string
+          creator_id?: string
+          current_participants?: number | null
+          description?: string | null
+          difficulty_level?: string | null
+          end_date?: string
+          id?: string
+          is_public?: boolean | null
+          max_participants?: number | null
+          name?: string
+          reward_points?: number | null
+          route_id?: string
+          start_date?: string
+          target_value?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenges_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       communities: {
         Row: {
           created_at: string
@@ -382,6 +556,38 @@ export type Database = {
           waypoints?: Json | null
         }
         Relationships: []
+      }
+      user_achievements: {
+        Row: {
+          achievement_id: string
+          earned_at: string
+          id: string
+          progress: Json | null
+          user_id: string
+        }
+        Insert: {
+          achievement_id: string
+          earned_at?: string
+          id?: string
+          progress?: Json | null
+          user_id: string
+        }
+        Update: {
+          achievement_id?: string
+          earned_at?: string
+          id?: string
+          progress?: Json | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_achievements_achievement_id_fkey"
+            columns: ["achievement_id"]
+            isOneToOne: false
+            referencedRelation: "achievements"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_follows: {
         Row: {
