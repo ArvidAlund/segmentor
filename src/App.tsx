@@ -13,6 +13,7 @@ import Auth from "./pages/Auth";
 import Challenges from "./pages/Challenges";
 import RaceRoute from "./pages/RaceRoute";
 import MapView from "./pages/MapView";
+import AdminPanel from "./pages/AdminPanel";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
             <Route path="/challenges" element={<Challenges />} />
             <Route path="/race/:routeId" element={<RaceRoute />} />
             <Route path="/map" element={<MapView />} />
+            <Route path="/admin" element={<AdminPanel />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

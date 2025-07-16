@@ -1,13 +1,15 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { MapPin, Timer, Trophy, Users, Zap, Navigation, LogOut } from "lucide-react";
+import { MapPin, Timer, Trophy, Users, Zap, Navigation, LogOut, Shield } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdminAccess } from "@/hooks/useAdminAccess";
 import { useEffect } from "react";
 import heroImage from "@/assets/racing-hero.jpg";
 
 const Index = () => {
   const { user, loading, signOut } = useAuth();
+  const { isAdmin } = useAdminAccess();
   const navigate = useNavigate();
 
   if (loading) {
@@ -50,6 +52,14 @@ const Index = () => {
                   <Link to="/map">
                     <Button variant="outline" size="sm">Map View</Button>
                   </Link>
+                  {isAdmin && (
+                    <Link to="/admin">
+                      <Button variant="outline" size="sm">
+                        <Shield className="w-4 h-4 mr-2" />
+                        Admin
+                      </Button>
+                    </Link>
+                  )}
                   <Button variant="outline" size="sm" onClick={signOut}>
                     <LogOut className="w-4 h-4 mr-2" />
                     Sign Out
