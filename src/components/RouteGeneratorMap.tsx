@@ -1,10 +1,12 @@
 import React, { useState, useCallback } from 'react';
-import { GoogleMap, useLoadScript, Marker, Circle } from '@react-google-maps/api';
+import { GoogleMap, useLoadScript, Circle } from '@react-google-maps/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
-import { MapPin, Crosshair } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { MapPin, Crosshair, AlertTriangle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const libraries: ("places")[] = ["places"];
 
@@ -22,9 +24,12 @@ const RouteGeneratorMap: React.FC<RouteGeneratorMapProps> = ({
   onRadiusChange,
 }) => {
   const [isPlacingPin, setIsPlacingPin] = useState(false);
+  const [apiKey, setApiKey] = useState('');
+  const [mapRef, setMapRef] = useState<google.maps.Map | null>(null);
+  const [markerRef, setMarkerRef] = useState<google.maps.marker.AdvancedMarkerElement | null>(null);
 
   const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: "AIzaSyBjCLjNYpUGPJUqF0j4_Q1kN8fmzBpXRtk", // You'll need to replace with your API key
+    googleMapsApiKey: apiKey,
     libraries,
   });
 
@@ -34,7 +39,37 @@ const RouteGeneratorMap: React.FC<RouteGeneratorMapProps> = ({
     streetViewControl: false,
     mapTypeControl: true,
     fullscreenControl: false,
+    mapId: "route-generator-map", // Required for AdvancedMarkerElement
   };
+
+  const onMapLoad = useCallback((map: google.maps.Map) => {
+    setMapRef(map);
+    updateMarker(map);
+  }, []);
+
+  const updateMarker = useCallback((map: google.maps.Map) => {
+    if (!map || !window.google?.maps?.marker?.AdvancedMarkerElement) return;
+
+    // Remove existing marker
+    if (markerRef) {
+      markerRef.map = null;
+    }
+
+    // Create new advanced marker
+    const newMarker = new google.maps.marker.AdvancedMarkerElement({
+      map,
+      position: center,
+      title: "Route Generation Center",
+    });
+
+    setMarkerRef(newMarker);
+  }, [center, markerRef]);
+
+  React.useEffect(() => {
+    if (mapRef && isLoaded) {
+      updateMarker(mapRef);
+    }
+  }, [center, mapRef, isLoaded, updateMarker]);
 
   const onMapClick = useCallback((e: google.maps.MapMouseEvent) => {
     if (isPlacingPin && e.latLng) {
@@ -63,6 +98,50 @@ const RouteGeneratorMap: React.FC<RouteGeneratorMapProps> = ({
       );
     }
   };
+
+  if (!apiKey) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MapPin className="w-5 h-5" />
+            Generation Area - Setup Required
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              A Google Maps API key is required to use the map interface. Please enter your API key below to continue.
+            </AlertDescription>
+          </Alert>
+          
+          <div className="space-y-2">
+            <Label htmlFor="api-key">Google Maps API Key</Label>
+            <Input
+              id="api-key"
+              type="password"
+              placeholder="Enter your Google Maps API key"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Get your API key from the{' '}
+              <a 
+                href="https://console.cloud.google.com/google/maps-apis/overview" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-primary hover:underline"
+              >
+                Google Cloud Console
+              </a>
+              . Make sure to enable the Maps JavaScript API and Directions API.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (loadError) {
     return (
@@ -138,22 +217,8 @@ const RouteGeneratorMap: React.FC<RouteGeneratorMapProps> = ({
             zoom={12}
             options={mapOptions}
             onClick={onMapClick}
+            onLoad={onMapLoad}
           >
-            {/* Center pin */}
-            <Marker
-              position={center}
-              icon={{
-                url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" fill="#ef4444" stroke="#fff" stroke-width="2"/>
-                    <circle cx="12" cy="10" r="3" fill="#fff"/>
-                  </svg>
-                `),
-                scaledSize: new google.maps.Size(32, 32),
-                anchor: new google.maps.Point(16, 32),
-              }}
-            />
-
             {/* Radius circle */}
             <Circle
               center={center}
