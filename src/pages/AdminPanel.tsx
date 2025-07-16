@@ -7,6 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   ArrowLeft, 
   Zap, 
@@ -21,10 +24,13 @@ import {
   AlertTriangle,
   Eye,
   UserX,
-  Calendar
+  Calendar,
+  Plus,
+  Sparkles
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { generateRoutes, CITY_PRESETS, type RouteGenerationParams } from "@/utils/routeGenerator";
 
 interface AdminAnalytics {
   total_users: number;
@@ -84,6 +90,18 @@ const AdminPanel = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
   const [isAdmin, setIsAdmin] = useState(false);
+  
+  // Route generation state
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [genParams, setGenParams] = useState<RouteGenerationParams>({
+    count: 5,
+    centerLat: 40.7128, // New York default
+    centerLng: -74.0060,
+    radiusKm: 10,
+    minDistanceKm: 1,
+    maxDistanceKm: 8
+  });
+  const [selectedCity, setSelectedCity] = useState<string>("New York");
 
   useEffect(() => {
     if (!loading && user) {
@@ -237,6 +255,59 @@ const AdminPanel = () => {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
+  const handleCityChange = (city: string) => {
+    setSelectedCity(city);
+    const cityCoords = CITY_PRESETS[city as keyof typeof CITY_PRESETS];
+    if (cityCoords) {
+      setGenParams(prev => ({
+        ...prev,
+        centerLat: cityCoords.lat,
+        centerLng: cityCoords.lng
+      }));
+    }
+  };
+
+  const generateAutomaticRoutes = async () => {
+    if (!user) return;
+    
+    setIsGenerating(true);
+    try {
+      const generatedRoutes = generateRoutes(genParams);
+      
+      // Insert routes into database
+      const routesWithUserId = generatedRoutes.map(route => ({
+        ...route,
+        user_id: user.id
+      }));
+
+      const { error } = await supabase
+        .from('routes')
+        .insert(routesWithUserId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Routes Generated Successfully",
+        description: `Created ${generatedRoutes.length} new racing routes.`,
+      });
+
+      // Refresh routes if we're on that tab
+      if (activeTab === "routes") {
+        await loadRoutes();
+      }
+
+    } catch (error: any) {
+      console.error('Error generating routes:', error);
+      toast({
+        title: "Generation Failed",
+        description: "Failed to generate routes. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   if (loading || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -295,10 +366,11 @@ const AdminPanel = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="routes">Routes</TabsTrigger>
+            <TabsTrigger value="generator">Route Generator</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
 
@@ -494,8 +566,19 @@ const AdminPanel = () => {
           <TabsContent value="routes" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Route Management</CardTitle>
-                <CardDescription>Moderate and manage racing routes</CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Route Management</CardTitle>
+                    <CardDescription>Manage all platform routes</CardDescription>
+                  </div>
+                  <Button 
+                    onClick={() => setActiveTab("generator")}
+                    className="flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Generate Routes
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -546,6 +629,151 @@ const AdminPanel = () => {
                     ))}
                   </TableBody>
                 </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="generator" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5" />
+                  Automatic Route Generator
+                </CardTitle>
+                <CardDescription>
+                  Generate racing routes automatically using AI-powered algorithms
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="city-select">City/Region</Label>
+                      <Select value={selectedCity} onValueChange={handleCityChange}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a city" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.keys(CITY_PRESETS).map((city) => (
+                            <SelectItem key={city} value={city}>
+                              {city}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="count">Number of Routes</Label>
+                        <Input
+                          id="count"
+                          type="number"
+                          min="1"
+                          max="20"
+                          value={genParams.count}
+                          onChange={(e) => setGenParams(prev => ({
+                            ...prev,
+                            count: parseInt(e.target.value) || 1
+                          }))}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="radius">Search Radius (km)</Label>
+                        <Input
+                          id="radius"
+                          type="number"
+                          min="1"
+                          max="50"
+                          value={genParams.radiusKm}
+                          onChange={(e) => setGenParams(prev => ({
+                            ...prev,
+                            radiusKm: parseFloat(e.target.value) || 1
+                          }))}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="min-distance">Min Distance (km)</Label>
+                        <Input
+                          id="min-distance"
+                          type="number"
+                          min="0.5"
+                          max="20"
+                          step="0.5"
+                          value={genParams.minDistanceKm}
+                          onChange={(e) => setGenParams(prev => ({
+                            ...prev,
+                            minDistanceKm: parseFloat(e.target.value) || 0.5
+                          }))}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="max-distance">Max Distance (km)</Label>
+                        <Input
+                          id="max-distance"
+                          type="number"
+                          min="1"
+                          max="50"
+                          step="0.5"
+                          value={genParams.maxDistanceKm}
+                          onChange={(e) => setGenParams(prev => ({
+                            ...prev,
+                            maxDistanceKm: parseFloat(e.target.value) || 1
+                          }))}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="p-4 bg-muted rounded-lg">
+                      <h4 className="font-medium mb-2">Generation Preview</h4>
+                      <div className="text-sm text-muted-foreground space-y-1">
+                        <p>• City: {selectedCity}</p>
+                        <p>• Routes to generate: {genParams.count}</p>
+                        <p>• Search area: {genParams.radiusKm}km radius</p>
+                        <p>• Distance range: {genParams.minDistanceKm}-{genParams.maxDistanceKm}km</p>
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                      <h4 className="font-medium mb-2 flex items-center gap-2">
+                        <Sparkles className="w-4 h-4" />
+                        Algorithm Features
+                      </h4>
+                      <ul className="text-sm text-muted-foreground space-y-1">
+                        <li>• Randomized start/end points</li>
+                        <li>• Difficulty based on distance</li>
+                        <li>• Auto-generated names & descriptions</li>
+                        <li>• Variety in route characteristics</li>
+                        <li>• Public by default</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <Button 
+                    onClick={generateAutomaticRoutes}
+                    disabled={isGenerating}
+                    className="flex items-center gap-2"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <div className="w-4 h-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4" />
+                        Generate Routes
+                      </>
+                    )}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
