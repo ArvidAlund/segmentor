@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import CreateTrack from "./pages/CreateTrack";
 import ExploreTracks from "./pages/ExploreTracks";
 import Profile from "./pages/Profile";
+import Community from "./pages/Community";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/profile" element={<Profile />} />
             <Route path="/create-track" element={<CreateTrack />} />
             <Route path="/explore-tracks" element={<ExploreTracks />} />
+            <Route path="/community" element={<Community />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

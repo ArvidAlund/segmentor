@@ -53,6 +53,51 @@ export type Database = {
         }
         Relationships: []
       }
+      community_chat: {
+        Row: {
+          community_id: string
+          created_at: string
+          id: string
+          message: string
+          message_type: string | null
+          reply_to_id: string | null
+          user_id: string
+        }
+        Insert: {
+          community_id: string
+          created_at?: string
+          id?: string
+          message: string
+          message_type?: string | null
+          reply_to_id?: string | null
+          user_id: string
+        }
+        Update: {
+          community_id?: string
+          created_at?: string
+          id?: string
+          message?: string
+          message_type?: string | null
+          reply_to_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_chat_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_chat_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "community_chat"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       community_members: {
         Row: {
           community_id: string
@@ -81,6 +126,44 @@ export type Database = {
             columns: ["community_id"]
             isOneToOne: false
             referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_participants: {
+        Row: {
+          completion_time: number | null
+          event_id: string
+          final_position: number | null
+          id: string
+          registration_time: string
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          completion_time?: number | null
+          event_id: string
+          final_position?: number | null
+          id?: string
+          registration_time?: string
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          completion_time?: number | null
+          event_id?: string
+          final_position?: number | null
+          id?: string
+          registration_time?: string
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_participants_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
             referencedColumns: ["id"]
           },
         ]
