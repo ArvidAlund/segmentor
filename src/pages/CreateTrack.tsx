@@ -21,9 +21,11 @@ const CreateTrack = () => {
   const [tags, setTags] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
-  // Route coordinates (will be passed from MapBox in the future)
+  // Route coordinates and calculated data
   const [startPoint, setStartPoint] = useState<{ lat: number; lng: number } | null>(null);
   const [endPoint, setEndPoint] = useState<{ lat: number; lng: number } | null>(null);
+  const [routeDistance, setRouteDistance] = useState<number>(0);
+  const [routeDuration, setRouteDuration] = useState<number>(0);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -76,9 +78,8 @@ const CreateTrack = () => {
           difficulty_level: difficulty,
           is_public: isPublic,
           tags: tags,
-          // For now, we'll calculate distance as simple Euclidean distance
-          // In a real app, you'd use proper route calculation
-          distance: calculateDistance(startPoint, endPoint),
+          distance: routeDistance,
+          estimated_time: Math.round(routeDuration),
         });
 
       if (error) throw error;
@@ -102,17 +103,20 @@ const CreateTrack = () => {
     }
   };
 
-  // Simple distance calculation (in kilometers)
-  const calculateDistance = (point1: { lat: number; lng: number }, point2: { lat: number; lng: number }) => {
-    const R = 6371; // Earth's radius in kilometers
-    const dLat = (point2.lat - point1.lat) * Math.PI / 180;
-    const dLon = (point2.lng - point1.lng) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(point1.lat * Math.PI / 180) * Math.cos(point2.lat * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return Number((R * c).toFixed(2));
+  const handleRouteChange = (
+    start: { lat: number; lng: number } | null,
+    finish: { lat: number; lng: number } | null,
+    routeData?: { distance: number; duration: number }
+  ) => {
+    setStartPoint(start);
+    setEndPoint(finish);
+    if (routeData) {
+      setRouteDistance(Number(routeData.distance.toFixed(2)));
+      setRouteDuration(Number(routeData.duration.toFixed(0)));
+    } else {
+      setRouteDistance(0);
+      setRouteDuration(0);
+    }
   };
 
   if (loading) {
@@ -192,7 +196,7 @@ const CreateTrack = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
-                <MapBox />
+                <MapBox onRouteChange={handleRouteChange} />
               </CardContent>
             </Card>
 
@@ -207,20 +211,14 @@ const CreateTrack = () => {
                     <Timer className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
                     <div className="text-sm text-muted-foreground">Estimated Time</div>
                     <div className="font-medium">
-                      {startPoint && endPoint ? 
-                        `${Math.round(calculateDistance(startPoint, endPoint) * 5)} min` : 
-                        '--:--'
-                      }
+                      {routeDuration > 0 ? `${Math.round(routeDuration)} min` : '--:--'}
                     </div>
                   </div>
                   <div className="text-center">
                     <Ruler className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
                     <div className="text-sm text-muted-foreground">Distance</div>
                     <div className="font-medium">
-                      {startPoint && endPoint ? 
-                        `${calculateDistance(startPoint, endPoint)} km` : 
-                        '-- km'
-                      }
+                      {routeDistance > 0 ? `${routeDistance} km` : '-- km'}
                     </div>
                   </div>
                   <div className="text-center">

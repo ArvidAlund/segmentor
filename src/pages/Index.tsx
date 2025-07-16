@@ -234,10 +234,10 @@ const Index = () => {
             <div className="w-6 h-6 bg-gradient-racing rounded flex items-center justify-center">
               <Zap className="w-4 h-4 text-primary-foreground" />
             </div>
-            <span className="font-semibold text-foreground">RaceTrack</span>
+            <span className="font-semibold text-foreground">Segmentor</span>
           </div>
           <p className="text-muted-foreground">
-            © 2024 RaceTrack. Race your world, one track at a time.
+            © 2024 Segmentor. Race your world, one track at a time.
           </p>
         </div>
       </footer>

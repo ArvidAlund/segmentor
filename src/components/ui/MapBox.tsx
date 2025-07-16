@@ -46,7 +46,11 @@ import {
   const mapContainerStyle = { width: "100%", height: "500px" };
   const center = { lat: 59.3293, lng: 18.0686 };
   
-  export default function MapBox() {
+interface MapBoxProps {
+  onRouteChange?: (start: google.maps.LatLngLiteral | null, finish: google.maps.LatLngLiteral | null, routeData?: { distance: number; duration: number }) => void;
+}
+
+export default function MapBox({ onRouteChange }: MapBoxProps) {
     const { isLoaded, loadError } = useLoadScript({
       googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY!,
       libraries,
@@ -99,6 +103,7 @@ import {
     useEffect(() => {
       if (!start || !finish) {
         setRoutePath([]);
+        onRouteChange?.(start, finish);
         return;
       }
   
@@ -112,18 +117,27 @@ import {
         },
         (result, status) => {
           if (status === window.google.maps.DirectionsStatus.OK && result.routes.length > 0) {
-            const path = result.routes[0].overview_path.map((latLng) => ({
+            const route = result.routes[0];
+            const path = route.overview_path.map((latLng) => ({
               lat: latLng.lat(),
               lng: latLng.lng(),
             }));
             setRoutePath(path);
+
+            // Calculate actual route distance and duration
+            const leg = route.legs[0];
+            const distance = leg.distance?.value ? leg.distance.value / 1000 : 0; // Convert to km
+            const duration = leg.duration?.value ? leg.duration.value / 60 : 0; // Convert to minutes
+
+            onRouteChange?.(start, finish, { distance, duration });
           } else {
             console.error("Directions request failed due to " + status);
             setRoutePath([]);
+            onRouteChange?.(start, finish);
           }
         }
       );
-    }, [start, finish]);
+    }, [start, finish, onRouteChange]);
   
     const onMapClick = useCallback(
       async (e: google.maps.MapMouseEvent) => {
