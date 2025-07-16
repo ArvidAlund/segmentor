@@ -14,6 +14,143 @@ export type Database = {
   }
   public: {
     Tables: {
+      communities: {
+        Row: {
+          created_at: string
+          creator_id: string
+          description: string | null
+          id: string
+          image_url: string | null
+          is_public: boolean | null
+          member_count: number | null
+          name: string
+          route_count: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          creator_id: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_public?: boolean | null
+          member_count?: number | null
+          name: string
+          route_count?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          creator_id?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_public?: boolean | null
+          member_count?: number | null
+          name?: string
+          route_count?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      community_members: {
+        Row: {
+          community_id: string
+          id: string
+          joined_at: string
+          role: string | null
+          user_id: string
+        }
+        Insert: {
+          community_id: string
+          id?: string
+          joined_at?: string
+          role?: string | null
+          user_id: string
+        }
+        Update: {
+          community_id?: string
+          id?: string
+          joined_at?: string
+          role?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_members_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          community_id: string | null
+          created_at: string
+          creator_id: string
+          current_participants: number | null
+          description: string | null
+          event_date: string
+          event_type: string | null
+          id: string
+          is_public: boolean | null
+          max_participants: number | null
+          name: string
+          registration_deadline: string | null
+          route_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          community_id?: string | null
+          created_at?: string
+          creator_id: string
+          current_participants?: number | null
+          description?: string | null
+          event_date: string
+          event_type?: string | null
+          id?: string
+          is_public?: boolean | null
+          max_participants?: number | null
+          name: string
+          registration_deadline?: string | null
+          route_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          community_id?: string | null
+          created_at?: string
+          creator_id?: string
+          current_participants?: number | null
+          description?: string | null
+          event_date?: string
+          event_type?: string | null
+          id?: string
+          is_public?: boolean | null
+          max_participants?: number | null
+          name?: string
+          registration_deadline?: string | null
+          route_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -160,6 +297,27 @@ export type Database = {
           updated_at?: string
           user_id?: string
           waypoints?: Json | null
+        }
+        Relationships: []
+      }
+      user_follows: {
+        Row: {
+          created_at: string
+          follower_id: string
+          following_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          follower_id: string
+          following_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          follower_id?: string
+          following_id?: string
+          id?: string
         }
         Relationships: []
       }
