@@ -153,6 +153,8 @@ const ExploreTracks = () => {
           route_id: routeId,
           liked: !currentlyLiked,
           favorited: route?.user_interaction?.favorited || false
+        }, {
+          onConflict: 'user_id,route_id'
         });
 
       if (error) throw error;
