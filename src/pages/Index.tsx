@@ -33,26 +33,29 @@ const Index = () => {
             <span className="text-xl font-bold text-foreground">Segmentor</span>
           </div>
           <div className="flex items-center gap-4">
-            {user ? (
-              <>
-                <span className="text-sm text-muted-foreground">
-                  Welcome, {user.email}
-                </span>
-                <Button variant="outline" size="sm" onClick={signOut}>
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Sign Out
-                </Button>
-              </>
-            ) : (
-              <>
-                <Link to="/auth">
-                  <Button variant="outline" size="sm">Login</Button>
-                </Link>
-                <Link to="/auth">
-                  <Button variant="racing" size="sm">Sign Up</Button>
-                </Link>
-              </>
-            )}
+              {user ? (
+                <>
+                  <span className="text-sm text-muted-foreground">
+                    Welcome, {user.email}
+                  </span>
+                  <Link to="/profile">
+                    <Button variant="outline" size="sm">Profile</Button>
+                  </Link>
+                  <Button variant="outline" size="sm" onClick={signOut}>
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sign Out
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Link to="/auth">
+                    <Button variant="outline" size="sm">Login</Button>
+                  </Link>
+                  <Link to="/auth">
+                    <Button variant="racing" size="sm">Sign Up</Button>
+                  </Link>
+                </>
+              )}
           </div>
         </div>
       </nav>
@@ -75,12 +78,21 @@ const Index = () => {
               Compete with racers worldwide and climb the leaderboards.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Link to="/create-track">
-                <Button variant="racing" size="lg" className="w-full sm:w-auto">
-                  <MapPin className="w-5 h-5" />
-                  Create Your First Track
-                </Button>
-              </Link>
+              {user ? (
+                <Link to="/create-track">
+                  <Button variant="racing" size="lg" className="w-full sm:w-auto">
+                    <MapPin className="w-5 h-5" />
+                    Create Your First Track
+                  </Button>
+                </Link>
+              ) : (
+                <Link to="/auth">
+                  <Button variant="racing" size="lg" className="w-full sm:w-auto">
+                    <MapPin className="w-5 h-5" />
+                    Get Started Free
+                  </Button>
+                </Link>
+              )}
               <Link to="/explore-tracks">
                 <Button variant="hero" size="lg" className="w-full sm:w-auto">
                   <Navigation className="w-5 h-5" />

@@ -50,6 +50,50 @@ export type Database = {
         }
         Relationships: []
       }
+      route_completions: {
+        Row: {
+          average_speed: number | null
+          completion_date: string
+          completion_time: number
+          created_at: string
+          gps_data: Json | null
+          id: string
+          max_speed: number | null
+          route_id: string
+          user_id: string
+        }
+        Insert: {
+          average_speed?: number | null
+          completion_date?: string
+          completion_time: number
+          created_at?: string
+          gps_data?: Json | null
+          id?: string
+          max_speed?: number | null
+          route_id: string
+          user_id: string
+        }
+        Update: {
+          average_speed?: number | null
+          completion_date?: string
+          completion_time?: number
+          created_at?: string
+          gps_data?: Json | null
+          id?: string
+          max_speed?: number | null
+          route_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "route_completions_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       routes: {
         Row: {
           created_at: string
@@ -62,10 +106,13 @@ export type Database = {
           id: string
           is_favorite: boolean | null
           is_public: boolean | null
+          likes_count: number | null
           name: string
+          shared_count: number | null
           start_lat: number
           start_lng: number
           tags: string[] | null
+          times_completed: number | null
           updated_at: string
           user_id: string
           waypoints: Json | null
@@ -81,10 +128,13 @@ export type Database = {
           id?: string
           is_favorite?: boolean | null
           is_public?: boolean | null
+          likes_count?: number | null
           name: string
+          shared_count?: number | null
           start_lat: number
           start_lng: number
           tags?: string[] | null
+          times_completed?: number | null
           updated_at?: string
           user_id: string
           waypoints?: Json | null
@@ -100,15 +150,62 @@ export type Database = {
           id?: string
           is_favorite?: boolean | null
           is_public?: boolean | null
+          likes_count?: number | null
           name?: string
+          shared_count?: number | null
           start_lat?: number
           start_lng?: number
           tags?: string[] | null
+          times_completed?: number | null
           updated_at?: string
           user_id?: string
           waypoints?: Json | null
         }
         Relationships: []
+      }
+      user_route_interactions: {
+        Row: {
+          best_time: number | null
+          completed: boolean | null
+          created_at: string
+          favorited: boolean | null
+          id: string
+          liked: boolean | null
+          route_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          best_time?: number | null
+          completed?: boolean | null
+          created_at?: string
+          favorited?: boolean | null
+          id?: string
+          liked?: boolean | null
+          route_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          best_time?: number | null
+          completed?: boolean | null
+          created_at?: string
+          favorited?: boolean | null
+          id?: string
+          liked?: boolean | null
+          route_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_route_interactions_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "routes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

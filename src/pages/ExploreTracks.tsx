@@ -1,95 +1,213 @@
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { 
-  Search, 
-  MapPin, 
-  Timer, 
-  Trophy, 
-  Users, 
-  Zap, 
-  ArrowLeft,
-  Filter,
-  Ruler,
-  Navigation,
-  Plus
-} from "lucide-react";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { 
+  ArrowLeft, 
+  Zap, 
+  LogOut, 
+  Search, 
+  Heart, 
+  Share2, 
+  MapPin, 
+  Ruler, 
+  Target,
+  User
+} from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+
+interface RouteWithProfile {
+  id: string;
+  name: string;
+  description: string | null;
+  distance: number | null;
+  difficulty_level: string | null;
+  is_public: boolean;
+  likes_count: number;
+  times_completed: number;
+  created_at: string;
+  tags: string[];
+  user_id: string;
+  profiles: {
+    display_name: string | null;
+    avatar_url: string | null;
+  } | null;
+  user_interaction?: {
+    liked: boolean;
+    favorited: boolean;
+  };
+}
 
 const ExploreTracks = () => {
-  const tracks = [
-    {
-      id: 1,
-      name: "Downtown Sprint Circuit",
-      distance: "3.2 km",
-      difficulty: "Medium",
-      record: "12:45",
-      participants: 342,
-      creator: "Alex Runner",
-      description: "Fast-paced urban track through the city center with challenging turns"
-    },
-    {
-      id: 2,
-      name: "Seaside Marathon Route",
-      distance: "21.1 km",
-      difficulty: "Hard",
-      record: "1:45:23",
-      participants: 156,
-      creator: "Maria Coastal",
-      description: "Scenic coastal route with stunning ocean views and moderate elevation"
-    },
-    {
-      id: 3,
-      name: "Park Loop Express",
-      distance: "1.8 km",
-      difficulty: "Easy",
-      record: "7:32",
-      participants: 567,
-      creator: "Tom Park",
-      description: "Perfect for beginners, peaceful park setting with minimal elevation"
-    },
-    {
-      id: 4,
-      name: "Mountain Ridge Challenge",
-      distance: "8.7 km",
-      difficulty: "Expert",
-      record: "35:12",
-      participants: 89,
-      creator: "Sarah Summit",
-      description: "Intense mountain trail with steep climbs and technical descents"
-    },
-    {
-      id: 5,
-      name: "University Campus Tour",
-      distance: "4.5 km",
-      difficulty: "Medium",
-      record: "18:45",
-      participants: 234,
-      creator: "Mike Student",
-      description: "Popular student route covering the entire campus with mixed terrain"
-    },
-    {
-      id: 6,
-      name: "Historic District Walk",
-      distance: "2.7 km",
-      difficulty: "Easy",
-      record: "15:20",
-      participants: 423,
-      creator: "Emma History",
-      description: "Cultural route through historic landmarks and cobblestone streets"
-    }
-  ];
+  const { user, loading, signOut } = useAuth();
+  const { toast } = useToast();
+  
+  const [routes, setRoutes] = useState<RouteWithProfile[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [difficultyFilter, setDifficultyFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("recent");
+  const [isLoading, setIsLoading] = useState(true);
 
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case "Easy": return "bg-racing-success/10 text-racing-success border-racing-success/30";
-      case "Medium": return "bg-racing-warning/10 text-racing-warning border-racing-warning/30";
-      case "Hard": return "bg-primary/10 text-primary border-primary/30";
-      case "Expert": return "bg-destructive/10 text-destructive border-destructive/30";
-      default: return "bg-muted/10 text-muted-foreground border-muted/30";
+  useEffect(() => {
+    loadRoutes();
+  }, [sortBy, difficultyFilter]);
+
+  const loadRoutes = async () => {
+    setIsLoading(true);
+    try {
+      let query = supabase
+        .from('routes')
+        .select(`
+          *,
+          profiles:user_id (
+            display_name,
+            avatar_url
+          )
+        `)
+        .eq('is_public', true);
+
+      // Apply difficulty filter
+      if (difficultyFilter !== "all") {
+        query = query.eq('difficulty_level', difficultyFilter);
+      }
+
+      // Apply sorting
+      switch (sortBy) {
+        case "popular":
+          query = query.order('likes_count', { ascending: false });
+          break;
+        case "distance":
+          query = query.order('distance', { ascending: false });
+          break;
+        case "completed":
+          query = query.order('times_completed', { ascending: false });
+          break;
+        case "recent":
+        default:
+          query = query.order('created_at', { ascending: false });
+          break;
+      }
+
+      const { data, error } = await query.limit(50);
+
+      if (error) throw error;
+
+      // If user is logged in, get their interactions with these routes
+      if (user && data) {
+        const routeIds = data.map(route => route.id);
+        const { data: interactions } = await supabase
+          .from('user_route_interactions')
+          .select('route_id, liked, favorited')
+          .eq('user_id', user.id)
+          .in('route_id', routeIds);
+
+        const interactionMap = new Map(
+          interactions?.map(i => [i.route_id, { liked: i.liked, favorited: i.favorited }]) || []
+        );
+
+        const routesWithInteractions = data.map(route => ({
+          ...route,
+          user_interaction: interactionMap.get(route.id)
+        })) as unknown as RouteWithProfile[];
+
+        setRoutes(routesWithInteractions);
+      } else {
+        setRoutes((data as unknown as RouteWithProfile[]) || []);
+      }
+    } catch (error: any) {
+      console.error('Error loading routes:', error);
+      toast({
+        title: "Error Loading Routes",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  const handleLikeRoute = async (routeId: string) => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to like routes.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const route = routes.find(r => r.id === routeId);
+      const currentlyLiked = route?.user_interaction?.liked || false;
+
+      const { error } = await supabase
+        .from('user_route_interactions')
+        .upsert({
+          user_id: user.id,
+          route_id: routeId,
+          liked: !currentlyLiked,
+          favorited: route?.user_interaction?.favorited || false
+        });
+
+      if (error) throw error;
+
+      // Update local state
+      setRoutes(prev => prev.map(route => {
+        if (route.id === routeId) {
+          return {
+            ...route,
+            likes_count: currentlyLiked ? route.likes_count - 1 : route.likes_count + 1,
+            user_interaction: {
+              ...route.user_interaction,
+              liked: !currentlyLiked
+            }
+          };
+        }
+        return route;
+      }));
+
+      toast({
+        title: currentlyLiked ? "Route Unliked" : "Route Liked",
+        description: currentlyLiked ? "Removed from your liked routes." : "Added to your liked routes.",
+      });
+    } catch (error: any) {
+      console.error('Error liking route:', error);
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleShareRoute = async (route: RouteWithProfile) => {
+    try {
+      await navigator.share({
+        title: route.name,
+        text: route.description || `Check out this racing route: ${route.name}`,
+        url: window.location.href + `?route=${route.id}`
+      });
+    } catch (error) {
+      // Fallback to clipboard
+      await navigator.clipboard.writeText(window.location.href + `?route=${route.id}`);
+      toast({
+        title: "Link Copied",
+        description: "Route link copied to clipboard!",
+      });
+    }
+  };
+
+  const filteredRoutes = routes.filter(route =>
+    route.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    route.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    route.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -111,127 +229,196 @@ const ExploreTracks = () => {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <Button variant="outline" size="sm">Profile</Button>
-            <Link to="/create-track">
-              <Button variant="racing" size="sm">
-                <Plus className="w-4 h-4" />
-                Create Track
-              </Button>
-            </Link>
+            {user ? (
+              <>
+                <Link to="/profile">
+                  <Button variant="outline" size="sm">
+                    <User className="w-4 h-4 mr-2" />
+                    Profile
+                  </Button>
+                </Link>
+                <Button variant="outline" size="sm" onClick={signOut}>
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Sign Out
+                </Button>
+              </>
+            ) : (
+              <Link to="/auth">
+                <Button variant="racing" size="sm">Sign In</Button>
+              </Link>
+            )}
           </div>
         </div>
       </nav>
 
       <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-racing bg-clip-text text-transparent">
-            Explore Racing Tracks
-          </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Discover amazing tracks created by racers worldwide. Find your next challenge and set new records.
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold mb-2">Explore Tracks</h1>
+          <p className="text-muted-foreground">
+            Discover amazing racing routes created by the community
           </p>
         </div>
 
         {/* Search and Filters */}
-        <div className="flex flex-col md:flex-row gap-4 mb-8">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input 
-              placeholder="Search tracks by name, location, or creator..."
-              className="pl-10 bg-card/50 border-border/40"
-            />
+        <Card className="mb-8">
+          <CardContent className="p-6">
+            <div className="flex flex-col lg:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search routes, descriptions, or tags..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              
+              <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
+                <SelectTrigger className="w-full lg:w-[180px]">
+                  <SelectValue placeholder="Difficulty" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Difficulties</SelectItem>
+                  <SelectItem value="easy">Easy</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="hard">Hard</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-full lg:w-[180px]">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="recent">Most Recent</SelectItem>
+                  <SelectItem value="popular">Most Liked</SelectItem>
+                  <SelectItem value="completed">Most Completed</SelectItem>
+                  <SelectItem value="distance">Longest Distance</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Routes Grid */}
+        {isLoading ? (
+          <div className="text-center py-12">
+            <div className="w-8 h-8 animate-spin rounded-full border-2 border-primary border-t-transparent mx-auto mb-4"></div>
+            <p>Loading routes...</p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm">
-              <Filter className="w-4 h-4" />
-              Filters
-            </Button>
-            <Button variant="outline" size="sm">
-              <Navigation className="w-4 h-4" />
-              Near Me
-            </Button>
+        ) : filteredRoutes.length === 0 ? (
+          <Card>
+            <CardContent className="p-12 text-center">
+              <MapPin className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-lg font-semibold mb-2">No routes found</h3>
+              <p className="text-muted-foreground mb-4">
+                Try adjusting your search criteria or create the first route!
+              </p>
+              <Link to="/create-track">
+                <Button>Create New Route</Button>
+              </Link>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-6">
+            {filteredRoutes.map((route) => (
+              <Card key={route.id} className="hover:shadow-lg transition-all duration-300 hover:scale-[1.02] animate-fade-in">
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-xl font-semibold">{route.name}</h3>
+                        {route.difficulty_level && (
+                          <Badge 
+                            variant={
+                              route.difficulty_level === 'easy' ? 'secondary' :
+                              route.difficulty_level === 'medium' ? 'default' : 'destructive'
+                            }
+                          >
+                            {route.difficulty_level}
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      {route.description && (
+                        <p className="text-muted-foreground mb-3">{route.description}</p>
+                      )}
+                      
+                      {/* Creator Info */}
+                      <div className="flex items-center gap-2 mb-4">
+                        <Avatar className="w-6 h-6">
+                          <AvatarImage src={route.profiles?.avatar_url || undefined} />
+                          <AvatarFallback className="text-xs bg-gradient-racing text-primary-foreground">
+                            {(route.profiles?.display_name || "U").charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm text-muted-foreground">
+                          by {route.profiles?.display_name || "Anonymous"}
+                        </span>
+                        <span className="text-sm text-muted-foreground">•</span>
+                        <span className="text-sm text-muted-foreground">
+                          {new Date(route.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                      
+                      {/* Stats */}
+                      <div className="flex items-center gap-6 text-sm text-muted-foreground mb-4">
+                        {route.distance && (
+                          <div className="flex items-center gap-1">
+                            <Ruler className="w-4 h-4" />
+                            {route.distance}km
+                          </div>
+                        )}
+                        <div className="flex items-center gap-1">
+                          <Heart className={`w-4 h-4 ${route.user_interaction?.liked ? 'fill-red-500 text-red-500' : ''}`} />
+                          {route.likes_count}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Target className="w-4 h-4" />
+                          {route.times_completed} completions
+                        </div>
+                      </div>
+                      
+                      {/* Tags */}
+                      {route.tags.length > 0 && (
+                        <div className="flex gap-1 flex-wrap">
+                          {route.tags.map((tag, index) => (
+                            <Badge key={index} variant="outline" className="text-xs">
+                              #{tag}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Action Buttons */}
+                    <div className="flex gap-2 ml-4">
+                      <Button 
+                        variant={route.user_interaction?.liked ? "default" : "outline"} 
+                        size="sm"
+                        onClick={() => handleLikeRoute(route.id)}
+                        className="hover-scale"
+                      >
+                        <Heart className={`w-4 h-4 ${route.user_interaction?.liked ? 'fill-current' : ''}`} />
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleShareRoute(route)}
+                        className="hover-scale"
+                      >
+                        <Share2 className="w-4 h-4" />
+                      </Button>
+                      <Button variant="racing" size="sm" className="hover-scale">
+                        Race It
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
-        </div>
-
-        {/* Quick Filters */}
-        <div className="flex flex-wrap gap-2 mb-8">
-          <Badge variant="outline" className="cursor-pointer hover:bg-primary/10 hover:border-primary/30">
-            All Tracks
-          </Badge>
-          <Badge variant="outline" className="cursor-pointer hover:bg-racing-success/10 hover:border-racing-success/30">
-            Easy
-          </Badge>
-          <Badge variant="outline" className="cursor-pointer hover:bg-racing-warning/10 hover:border-racing-warning/30">
-            Medium
-          </Badge>
-          <Badge variant="outline" className="cursor-pointer hover:bg-primary/10 hover:border-primary/30">
-            Hard
-          </Badge>
-          <Badge variant="outline" className="cursor-pointer hover:bg-destructive/10 hover:border-destructive/30">
-            Expert
-          </Badge>
-          <Badge variant="outline" className="cursor-pointer hover:bg-accent/10 hover:border-accent/30">
-            Popular
-          </Badge>
-        </div>
-
-        {/* Tracks Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {tracks.map((track) => (
-            <Card key={track.id} className="p-6 bg-card/50 backdrop-blur-sm border-border/40 hover:shadow-card transition-all duration-300 hover:scale-105 cursor-pointer group">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold mb-1 text-foreground group-hover:text-primary transition-colors">
-                    {track.name}
-                  </h3>
-                  <p className="text-sm text-muted-foreground mb-2">by {track.creator}</p>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {track.description}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 mb-4">
-                <Badge variant="outline" className={getDifficultyColor(track.difficulty)}>
-                  {track.difficulty}
-                </Badge>
-                <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                  <Users className="w-3 h-3" />
-                  {track.participants}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="flex items-center gap-2">
-                  <Ruler className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm font-medium text-foreground">{track.distance}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Trophy className="w-4 h-4 text-racing-warning" />
-                  <span className="text-sm font-medium text-foreground">{track.record}</span>
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <Button variant="racing" size="sm" className="flex-1">
-                  <Timer className="w-4 h-4" />
-                  Race Now
-                </Button>
-                <Button variant="outline" size="sm">
-                  <MapPin className="w-4 h-4" />
-                </Button>
-              </div>
-            </Card>
-          ))}
-        </div>
-
-        {/* Load More */}
-        <div className="text-center mt-12">
-          <Button variant="outline" size="lg">
-            Load More Tracks
-          </Button>
-        </div>
+        )}
       </div>
     </div>
   );

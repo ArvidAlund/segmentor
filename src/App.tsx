@@ -7,6 +7,7 @@ import { AuthProvider } from "./hooks/useAuth";
 import Index from "./pages/Index";
 import CreateTrack from "./pages/CreateTrack";
 import ExploreTracks from "./pages/ExploreTracks";
+import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -22,6 +23,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/profile" element={<Profile />} />
             <Route path="/create-track" element={<CreateTrack />} />
             <Route path="/explore-tracks" element={<ExploreTracks />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
