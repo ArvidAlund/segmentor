@@ -31,6 +31,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { generateRoutes, CITY_PRESETS, type RouteGenerationParams } from "@/utils/routeGenerator";
+import RouteGeneratorMap from "@/components/RouteGeneratorMap";
 
 interface AdminAnalytics {
   total_users: number;
@@ -272,12 +273,22 @@ const AdminPanel = () => {
     
     setIsGenerating(true);
     try {
-      const generatedRoutes = generateRoutes(genParams);
+      const generatedRoutes = await generateRoutes(genParams);
       
-      // Insert routes into database
+      if (generatedRoutes.length === 0) {
+        toast({
+          title: "No Routes Generated",
+          description: "Unable to generate routes in the selected area. Try a different location or larger radius.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Insert routes into database with waypoints as JSON
       const routesWithUserId = generatedRoutes.map(route => ({
         ...route,
-        user_id: user.id
+        user_id: user.id,
+        waypoints: route.waypoints || null
       }));
 
       const { error } = await supabase
@@ -288,7 +299,7 @@ const AdminPanel = () => {
 
       toast({
         title: "Routes Generated Successfully",
-        description: `Created ${generatedRoutes.length} new racing routes.`,
+        description: `Created ${generatedRoutes.length} new road-following racing routes.`,
       });
 
       // Refresh routes if we're on that tab
@@ -645,134 +656,163 @@ const AdminPanel = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="city-select">City/Region</Label>
-                      <Select value={selectedCity} onValueChange={handleCityChange}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a city" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.keys(CITY_PRESETS).map((city) => (
-                            <SelectItem key={city} value={city}>
-                              {city}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                <div className="grid lg:grid-cols-2 gap-6">
+                  {/* Map Selection */}
+                  <RouteGeneratorMap
+                    center={{ lat: genParams.centerLat, lng: genParams.centerLng }}
+                    radius={genParams.radiusKm}
+                    onCenterChange={(center) => setGenParams(prev => ({
+                      ...prev,
+                      centerLat: center.lat,
+                      centerLng: center.lng
+                    }))}
+                    onRadiusChange={(radius) => setGenParams(prev => ({
+                      ...prev,
+                      radiusKm: radius
+                    }))}
+                  />
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="count">Number of Routes</Label>
-                        <Input
-                          id="count"
-                          type="number"
-                          min="1"
-                          max="20"
-                          value={genParams.count}
-                          onChange={(e) => setGenParams(prev => ({
-                            ...prev,
-                            count: parseInt(e.target.value) || 1
-                          }))}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="radius">Search Radius (km)</Label>
-                        <Input
-                          id="radius"
-                          type="number"
-                          min="1"
-                          max="50"
-                          value={genParams.radiusKm}
-                          onChange={(e) => setGenParams(prev => ({
-                            ...prev,
-                            radiusKm: parseFloat(e.target.value) || 1
-                          }))}
-                        />
-                      </div>
-                    </div>
+                  {/* Generation Settings */}
+                  <div className="space-y-6">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Generation Settings</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div>
+                          <Label htmlFor="city-select">Quick Location Presets</Label>
+                          <Select value={selectedCity} onValueChange={handleCityChange}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a city" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Object.keys(CITY_PRESETS).map((city) => (
+                                <SelectItem key={city} value={city}>
+                                  {city}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="min-distance">Min Distance (km)</Label>
-                        <Input
-                          id="min-distance"
-                          type="number"
-                          min="0.5"
-                          max="20"
-                          step="0.5"
-                          value={genParams.minDistanceKm}
-                          onChange={(e) => setGenParams(prev => ({
-                            ...prev,
-                            minDistanceKm: parseFloat(e.target.value) || 0.5
-                          }))}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="max-distance">Max Distance (km)</Label>
-                        <Input
-                          id="max-distance"
-                          type="number"
-                          min="1"
-                          max="50"
-                          step="0.5"
-                          value={genParams.maxDistanceKm}
-                          onChange={(e) => setGenParams(prev => ({
-                            ...prev,
-                            maxDistanceKm: parseFloat(e.target.value) || 1
-                          }))}
-                        />
-                      </div>
-                    </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="count">Number of Routes</Label>
+                            <Input
+                              id="count"
+                              type="number"
+                              min="1"
+                              max="10"
+                              value={genParams.count}
+                              onChange={(e) => setGenParams(prev => ({
+                                ...prev,
+                                count: parseInt(e.target.value) || 1
+                              }))}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="radius">Search Radius (km)</Label>
+                            <Input
+                              id="radius"
+                              type="number"
+                              min="1"
+                              max="50"
+                              value={genParams.radiusKm}
+                              onChange={(e) => setGenParams(prev => ({
+                                ...prev,
+                                radiusKm: parseFloat(e.target.value) || 1
+                              }))}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="min-distance">Min Distance (km)</Label>
+                            <Input
+                              id="min-distance"
+                              type="number"
+                              min="0.5"
+                              max="20"
+                              step="0.5"
+                              value={genParams.minDistanceKm}
+                              onChange={(e) => setGenParams(prev => ({
+                                ...prev,
+                                minDistanceKm: parseFloat(e.target.value) || 0.5
+                              }))}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="max-distance">Max Distance (km)</Label>
+                            <Input
+                              id="max-distance"
+                              type="number"
+                              min="1"
+                              max="50"
+                              step="0.5"
+                              value={genParams.maxDistanceKm}
+                              onChange={(e) => setGenParams(prev => ({
+                                ...prev,
+                                maxDistanceKm: parseFloat(e.target.value) || 1
+                              }))}
+                            />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Generation Preview</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          <div className="p-4 bg-muted rounded-lg">
+                            <div className="text-sm space-y-1">
+                              <p><strong>Location:</strong> {genParams.centerLat.toFixed(4)}, {genParams.centerLng.toFixed(4)}</p>
+                              <p><strong>Routes to generate:</strong> {genParams.count}</p>
+                              <p><strong>Search area:</strong> {genParams.radiusKm}km radius</p>
+                              <p><strong>Distance range:</strong> {genParams.minDistanceKm}-{genParams.maxDistanceKm}km</p>
+                            </div>
+                          </div>
+
+                          <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                            <h4 className="font-medium mb-2 flex items-center gap-2">
+                              <Sparkles className="w-4 h-4" />
+                              Road-Following Algorithm
+                            </h4>
+                            <ul className="text-sm text-muted-foreground space-y-1">
+                              <li>• Follows actual roads and streets</li>
+                              <li>• Snaps start/end points to nearest roads</li>
+                              <li>• Uses Google Maps routing</li>
+                              <li>• Real distance and time calculations</li>
+                              <li>• Variety in route characteristics</li>
+                              <li>• Avoids highways and tolls sometimes</li>
+                            </ul>
+                          </div>
+
+                          <Button 
+                            onClick={generateAutomaticRoutes}
+                            disabled={isGenerating}
+                            className="w-full flex items-center gap-2"
+                            size="lg"
+                          >
+                            {isGenerating ? (
+                              <>
+                                <div className="w-4 h-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                                Generating Road Routes...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="w-4 h-4" />
+                                Generate Road Routes
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
-
-                  <div className="space-y-4">
-                    <div className="p-4 bg-muted rounded-lg">
-                      <h4 className="font-medium mb-2">Generation Preview</h4>
-                      <div className="text-sm text-muted-foreground space-y-1">
-                        <p>• City: {selectedCity}</p>
-                        <p>• Routes to generate: {genParams.count}</p>
-                        <p>• Search area: {genParams.radiusKm}km radius</p>
-                        <p>• Distance range: {genParams.minDistanceKm}-{genParams.maxDistanceKm}km</p>
-                      </div>
-                    </div>
-
-                    <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
-                      <h4 className="font-medium mb-2 flex items-center gap-2">
-                        <Sparkles className="w-4 h-4" />
-                        Algorithm Features
-                      </h4>
-                      <ul className="text-sm text-muted-foreground space-y-1">
-                        <li>• Randomized start/end points</li>
-                        <li>• Difficulty based on distance</li>
-                        <li>• Auto-generated names & descriptions</li>
-                        <li>• Variety in route characteristics</li>
-                        <li>• Public by default</li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex justify-end">
-                  <Button 
-                    onClick={generateAutomaticRoutes}
-                    disabled={isGenerating}
-                    className="flex items-center gap-2"
-                  >
-                    {isGenerating ? (
-                      <>
-                        <div className="w-4 h-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-4 h-4" />
-                        Generate Routes
-                      </>
-                    )}
-                  </Button>
                 </div>
               </CardContent>
             </Card>

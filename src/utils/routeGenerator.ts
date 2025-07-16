@@ -19,6 +19,13 @@ export interface GeneratedRoute {
   difficulty_level: 'easy' | 'medium' | 'hard';
   tags: string[];
   is_public: boolean;
+  waypoints?: any[];
+}
+
+export interface RoadRouteResult {
+  distance: number;
+  duration: number;
+  waypoints: google.maps.LatLngLiteral[];
 }
 
 // Route name templates
@@ -49,17 +56,75 @@ function generateRandomPoint(centerLat: number, centerLng: number, radiusKm: num
   return { lat, lng };
 }
 
-// Calculate distance between two points (Haversine formula)
-function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371; // Earth's radius in km
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = 
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-    Math.sin(dLng/2) * Math.sin(dLng/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R * c;
+// Snap point to nearest road using Google Maps
+async function snapToRoad(point: google.maps.LatLngLiteral): Promise<google.maps.LatLngLiteral> {
+  return new Promise((resolve) => {
+    const directionsService = new google.maps.DirectionsService();
+    
+    // Create a very short route to snap the point to a road
+    const nearbyPoint = {
+      lat: point.lat + 0.001,
+      lng: point.lng + 0.001
+    };
+    
+    directionsService.route({
+      origin: point,
+      destination: nearbyPoint,
+      travelMode: google.maps.TravelMode.DRIVING,
+      avoidHighways: false,
+      avoidTolls: false
+    }, (result, status) => {
+      if (status === google.maps.DirectionsStatus.OK && result) {
+        const route = result.routes[0];
+        const snappedPoint = route.legs[0].start_location;
+        resolve({
+          lat: snappedPoint.lat(),
+          lng: snappedPoint.lng()
+        });
+      } else {
+        // If snapping fails, return original point
+        resolve(point);
+      }
+    });
+  });
+}
+
+// Get actual road route between two points
+async function getRoadRoute(start: google.maps.LatLngLiteral, end: google.maps.LatLngLiteral): Promise<RoadRouteResult | null> {
+  return new Promise((resolve) => {
+    const directionsService = new google.maps.DirectionsService();
+    
+    directionsService.route({
+      origin: start,
+      destination: end,
+      travelMode: google.maps.TravelMode.DRIVING,
+      avoidHighways: Math.random() > 0.7, // Sometimes avoid highways for variety
+      avoidTolls: Math.random() > 0.8, // Sometimes avoid tolls
+    }, (result, status) => {
+      if (status === google.maps.DirectionsStatus.OK && result) {
+        const route = result.routes[0];
+        const leg = route.legs[0];
+        
+        // Extract waypoints from the route
+        const waypoints: google.maps.LatLngLiteral[] = [];
+        route.overview_path.forEach(point => {
+          waypoints.push({
+            lat: point.lat(),
+            lng: point.lng()
+          });
+        });
+        
+        resolve({
+          distance: leg.distance?.value ? leg.distance.value / 1000 : 0, // Convert to km
+          duration: leg.duration?.value || 0, // In seconds
+          waypoints: waypoints
+        });
+      } else {
+        console.warn('Failed to get road route:', status);
+        resolve(null);
+      }
+    });
+  });
 }
 
 // Generate route name
@@ -73,16 +138,16 @@ function generateRouteName(): string {
 // Generate route description
 function generateRouteDescription(distance: number, difficulty: string): string {
   const descriptions = [
-    `A ${difficulty} ${distance.toFixed(1)}km route perfect for testing your speed and endurance.`,
-    `Experience this ${distance.toFixed(1)}km ${difficulty} circuit designed for competitive racing.`,
-    `Challenge yourself on this ${distance.toFixed(1)}km ${difficulty} route with varied terrain.`,
-    `A carefully crafted ${distance.toFixed(1)}km ${difficulty} path for serious racers.`,
-    `Navigate this ${distance.toFixed(1)}km ${difficulty} course featuring dynamic challenges.`
+    `A ${difficulty} ${distance.toFixed(1)}km route perfect for testing your speed and endurance on real roads.`,
+    `Experience this ${distance.toFixed(1)}km ${difficulty} circuit designed for competitive road racing.`,
+    `Challenge yourself on this ${distance.toFixed(1)}km ${difficulty} route following actual street paths.`,
+    `A carefully crafted ${distance.toFixed(1)}km ${difficulty} road course for serious racers.`,
+    `Navigate this ${distance.toFixed(1)}km ${difficulty} route featuring real-world driving challenges.`
   ];
   return descriptions[Math.floor(Math.random() * descriptions.length)];
 }
 
-// Determine difficulty based on distance and terrain
+// Determine difficulty based on distance
 function determineDifficulty(distance: number): 'easy' | 'medium' | 'hard' {
   if (distance < 3) return 'easy';
   if (distance < 7) return 'medium';
@@ -91,7 +156,7 @@ function determineDifficulty(distance: number): 'easy' | 'medium' | 'hard' {
 
 // Generate tags for route
 function generateTags(difficulty: string, distance: number): string[] {
-  const baseTags = ['auto-generated'];
+  const baseTags = ['auto-generated', 'road-route'];
   
   if (difficulty === 'easy') baseTags.push('beginner-friendly');
   if (difficulty === 'hard') baseTags.push('challenging');
@@ -106,61 +171,67 @@ function generateTags(difficulty: string, distance: number): string[] {
   return baseTags;
 }
 
-// Main route generation function
-export function generateRoutes(params: RouteGenerationParams): GeneratedRoute[] {
+// Main route generation function with road following
+export async function generateRoutes(params: RouteGenerationParams): Promise<GeneratedRoute[]> {
   const routes: GeneratedRoute[] = [];
   
   for (let i = 0; i < params.count; i++) {
     let attempts = 0;
     let validRoute = false;
     
-    while (!validRoute && attempts < 20) {
-      // Generate start point
-      const startPoint = generateRandomPoint(
-        params.centerLat, 
-        params.centerLng, 
-        params.radiusKm
-      );
-      
-      // Generate end point with desired distance
-      let endPoint;
-      let distance;
-      let endAttempts = 0;
-      
-      do {
-        endPoint = generateRandomPoint(
+    while (!validRoute && attempts < 10) {
+      try {
+        // Generate start point and snap to road
+        const startPoint = generateRandomPoint(
           params.centerLat, 
           params.centerLng, 
           params.radiusKm
         );
-        distance = calculateDistance(
-          startPoint.lat, startPoint.lng,
-          endPoint.lat, endPoint.lng
-        );
-        endAttempts++;
-      } while (
-        (distance < params.minDistanceKm || distance > params.maxDistanceKm) && 
-        endAttempts < 50
-      );
-      
-      if (distance >= params.minDistanceKm && distance <= params.maxDistanceKm) {
-        const difficulty = determineDifficulty(distance);
-        const estimatedTime = Math.round(distance * 300 + Math.random() * 600); // 5-15 min per km variation
+        const snappedStart = await snapToRoad(startPoint);
         
-        routes.push({
-          name: generateRouteName(),
-          description: generateRouteDescription(distance, difficulty),
-          start_lat: startPoint.lat,
-          start_lng: startPoint.lng,
-          end_lat: endPoint.lat,
-          end_lng: endPoint.lng,
-          distance: Math.round(distance * 100) / 100, // Round to 2 decimals
-          estimated_time: estimatedTime,
-          difficulty_level: difficulty,
-          tags: generateTags(difficulty, distance),
-          is_public: true
-        });
-        validRoute = true;
+        // Generate end point and snap to road
+        let endPoint;
+        let snappedEnd;
+        let roadRoute: RoadRouteResult | null = null;
+        let endAttempts = 0;
+        
+        do {
+          endPoint = generateRandomPoint(
+            params.centerLat, 
+            params.centerLng, 
+            params.radiusKm
+          );
+          snappedEnd = await snapToRoad(endPoint);
+          roadRoute = await getRoadRoute(snappedStart, snappedEnd);
+          endAttempts++;
+        } while (
+          (!roadRoute || 
+           roadRoute.distance < params.minDistanceKm || 
+           roadRoute.distance > params.maxDistanceKm) && 
+          endAttempts < 8
+        );
+        
+        if (roadRoute && roadRoute.distance >= params.minDistanceKm && roadRoute.distance <= params.maxDistanceKm) {
+          const difficulty = determineDifficulty(roadRoute.distance);
+          
+          routes.push({
+            name: generateRouteName(),
+            description: generateRouteDescription(roadRoute.distance, difficulty),
+            start_lat: snappedStart.lat,
+            start_lng: snappedStart.lng,
+            end_lat: snappedEnd.lat,
+            end_lng: snappedEnd.lng,
+            distance: Math.round(roadRoute.distance * 100) / 100,
+            estimated_time: roadRoute.duration,
+            difficulty_level: difficulty,
+            tags: generateTags(difficulty, roadRoute.distance),
+            is_public: true,
+            waypoints: roadRoute.waypoints
+          });
+          validRoute = true;
+        }
+      } catch (error) {
+        console.warn('Error generating route:', error);
       }
       attempts++;
     }
@@ -169,7 +240,7 @@ export function generateRoutes(params: RouteGenerationParams): GeneratedRoute[] 
   return routes;
 }
 
-// Preset city centers for common locations
+// Preset city centers for quick selection
 export const CITY_PRESETS = {
   'New York': { lat: 40.7128, lng: -74.0060 },
   'Los Angeles': { lat: 34.0522, lng: -118.2437 },
