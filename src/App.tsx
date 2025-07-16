@@ -11,6 +11,8 @@ import Profile from "./pages/Profile";
 import Community from "./pages/Community";
 import Auth from "./pages/Auth";
 import Challenges from "./pages/Challenges";
+import RaceRoute from "./pages/RaceRoute";
+import MapView from "./pages/MapView";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,7 +32,8 @@ const App = () => (
             <Route path="/explore-tracks" element={<ExploreTracks />} />
             <Route path="/community" element={<Community />} />
             <Route path="/challenges" element={<Challenges />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="/race/:routeId" element={<RaceRoute />} />
+            <Route path="/map" element={<MapView />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

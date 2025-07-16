@@ -411,9 +411,11 @@ const ExploreTracks = () => {
                       >
                         <Share2 className="w-4 h-4" />
                       </Button>
-                      <Button variant="racing" size="sm" className="hover-scale">
-                        Race It
-                      </Button>
+                      <Link to={`/race/${route.id}`}>
+                        <Button variant="racing" size="sm" className="hover-scale">
+                          Race It
+                        </Button>
+                      </Link>
                     </div>
                   </div>
                 </CardContent>

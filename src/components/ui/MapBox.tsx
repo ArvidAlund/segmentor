@@ -48,30 +48,44 @@ import {
   
 interface MapBoxProps {
   onRouteChange?: (start: google.maps.LatLngLiteral | null, finish: google.maps.LatLngLiteral | null, routeData?: { distance: number; duration: number }) => void;
+  initialCenter?: google.maps.LatLngLiteral;
+  showRoute?: {
+    start: google.maps.LatLngLiteral;
+    finish: google.maps.LatLngLiteral;
+  };
+  userPosition?: google.maps.LatLngLiteral | null;
+  readonly?: boolean;
 }
 
-export default function MapBox({ onRouteChange }: MapBoxProps) {
+export default function MapBox({ onRouteChange, initialCenter, showRoute, userPosition, readonly = false }: MapBoxProps) {
     const { isLoaded, loadError } = useLoadScript({
       googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY!,
       libraries,
     });
   
-    const [userPosition, setUserPosition] = useState<google.maps.LatLngLiteral | null>(null);
-    const [start, setStart] = useState<google.maps.LatLngLiteral | null>(null);
-    const [finish, setFinish] = useState<google.maps.LatLngLiteral | null>(null);
-    const [routePath, setRoutePath] = useState<google.maps.LatLngLiteral[]>([]);
-  
-    useEffect(() => {
-      if ("geolocation" in navigator) {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            setUserPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-          },
-          (err) => console.error("Geolocation error:", err),
-          { enableHighAccuracy: true }
-        );
-      }
-    }, []);
+  const [userLocationFromGPS, setUserLocationFromGPS] = useState<google.maps.LatLngLiteral | null>(null);
+  const [start, setStart] = useState<google.maps.LatLngLiteral | null>(showRoute?.start || null);
+  const [finish, setFinish] = useState<google.maps.LatLngLiteral | null>(showRoute?.finish || null);
+  const [routePath, setRoutePath] = useState<google.maps.LatLngLiteral[]>([]);
+
+  useEffect(() => {
+    if (showRoute) {
+      setStart(showRoute.start);
+      setFinish(showRoute.finish);
+    }
+  }, [showRoute]);
+
+  useEffect(() => {
+    if (!readonly && "geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setUserLocationFromGPS({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        },
+        (err) => console.error("Geolocation error:", err),
+        { enableHighAccuracy: true }
+      );
+    }
+  }, [readonly]);
   
     // Function to snap a point to nearest road using DirectionsService with origin==destination
     const snapToRoad = (point: google.maps.LatLngLiteral): Promise<google.maps.LatLngLiteral> => {
@@ -139,26 +153,29 @@ export default function MapBox({ onRouteChange }: MapBoxProps) {
       );
     }, [start, finish, onRouteChange]);
   
-    const onMapClick = useCallback(
-      async (e: google.maps.MapMouseEvent) => {
-        if (!e.latLng) return;
-        const coords = { lat: e.latLng.lat(), lng: e.latLng.lng() };
-  
-        if (!start) {
-          const snapped = await snapToRoad(coords);
-          setStart(snapped);
-        } else if (!finish) {
-          const snapped = await snapToRoad(coords);
-          setFinish(snapped);
-        } else {
-          const snapped = await snapToRoad(coords);
-          setStart(snapped);
-          setFinish(null);
-          setRoutePath([]);
-        }
-      },
-      [start, finish]
-    );
+  const onMapClick = useCallback(
+    async (e: google.maps.MapMouseEvent) => {
+      if (readonly || !e.latLng) return;
+      const coords = { lat: e.latLng.lat(), lng: e.latLng.lng() };
+
+      if (!start) {
+        const snapped = await snapToRoad(coords);
+        setStart(snapped);
+      } else if (!finish) {
+        const snapped = await snapToRoad(coords);
+        setFinish(snapped);
+      } else {
+        const snapped = await snapToRoad(coords);
+        setStart(snapped);
+        setFinish(null);
+        setRoutePath([]);
+      }
+    },
+    [start, finish, readonly]
+  );
+
+  const displayUserPosition = userPosition || userLocationFromGPS;
+  const mapCenter = initialCenter || displayUserPosition || center;
   
     if (loadError) return <div>❌ Error loading map</div>;
     if (!isLoaded) return <div>🛰️ Loading map...</div>;
@@ -167,7 +184,7 @@ export default function MapBox({ onRouteChange }: MapBoxProps) {
       <GoogleMap
         mapContainerStyle={mapContainerStyle}
         zoom={14}
-        center={userPosition ?? center}
+        center={mapCenter}
         onClick={onMapClick}
         options={{
             streetViewControl: false, // ✅ Pegman removed
@@ -175,8 +192,8 @@ export default function MapBox({ onRouteChange }: MapBoxProps) {
           }}
       >
         {/* User Position */}
-        {userPosition && (
-          <OverlayView position={userPosition} mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}>
+        {displayUserPosition && (
+          <OverlayView position={displayUserPosition} mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}>
             <div className="relative w-8 h-8">
               <div className="absolute w-full h-full rounded-full bg-[#38b9fa] opacity-70 animate-pulse" />
               <div className="absolute w-3 h-3 top-2.5 left-2.5 rounded-full bg-[#38b9fa] shadow-md border-2 border-white" />
