@@ -61,7 +61,7 @@ All colors MUST be HSL. Racing-inspired with electric blue and neon green accent
     
     /* Animations */
     --transition-racing: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    --pulse-duration: 4s;
+    --pulse-duration: 2s;
 
     --sidebar-background: 0 0% 98%;
 
