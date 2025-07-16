@@ -1,10 +1,26 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { MapPin, Timer, Trophy, Users, Zap, Navigation } from "lucide-react";
-import { Link } from "react-router-dom";
+import { MapPin, Timer, Trophy, Users, Zap, Navigation, LogOut } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { useEffect } from "react";
 import heroImage from "@/assets/racing-hero.jpg";
 
 const Index = () => {
+  const { user, loading, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 animate-spin rounded-full border-2 border-primary border-t-transparent mx-auto mb-4"></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Navigation */}
@@ -17,8 +33,26 @@ const Index = () => {
             <span className="text-xl font-bold text-foreground">Segmentor</span>
           </div>
           <div className="flex items-center gap-4">
-            <Button variant="outline" size="sm">Login</Button>
-            <Button variant="racing" size="sm">Sign Up</Button>
+            {user ? (
+              <>
+                <span className="text-sm text-muted-foreground">
+                  Welcome, {user.email}
+                </span>
+                <Button variant="outline" size="sm" onClick={signOut}>
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Sign Out
+                </Button>
+              </>
+            ) : (
+              <>
+                <Link to="/auth">
+                  <Button variant="outline" size="sm">Login</Button>
+                </Link>
+                <Link to="/auth">
+                  <Button variant="racing" size="sm">Sign Up</Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </nav>
@@ -151,12 +185,21 @@ const Index = () => {
             your custom tracks today.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Link to="/create-track">
-              <Button variant="racing" size="lg" className="w-full sm:w-auto">
-                <MapPin className="w-5 h-5" />
-                Get Started Free
-              </Button>
-            </Link>
+            {user ? (
+              <Link to="/create-track">
+                <Button variant="racing" size="lg" className="w-full sm:w-auto">
+                  <MapPin className="w-5 h-5" />
+                  Create Your First Track
+                </Button>
+              </Link>
+            ) : (
+              <Link to="/auth">
+                <Button variant="racing" size="lg" className="w-full sm:w-auto">
+                  <MapPin className="w-5 h-5" />
+                  Get Started Free
+                </Button>
+              </Link>
+            )}
             <Link to="/explore-tracks">
               <Button variant="outline" size="lg" className="w-full sm:w-auto">
                 Learn More

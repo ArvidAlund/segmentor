@@ -1,25 +1,135 @@
+import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { 
-  MapPin, 
-  Navigation, 
-  Zap, 
-  ArrowLeft, 
-  Search, 
-  Plus,
-  Target,
-  Flag,
-  Timer,
-  Users,
-  Ruler
-} from "lucide-react";
-import { Link } from "react-router-dom";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowLeft, Zap, LogOut, MapPin, Flag, Timer, Ruler, Users } from "lucide-react";
 import MapBox from "@/components/ui/MapBox";
-
+import RouteForm from "@/components/RouteForm";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const CreateTrack = () => {
+  const { user, loading, signOut } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  
+  const [routeName, setRouteName] = useState("");
+  const [description, setDescription] = useState("");
+  const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">("medium");
+  const [isPublic, setIsPublic] = useState(false);
+  const [tags, setTags] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  // Route coordinates (will be passed from MapBox in the future)
+  const [startPoint, setStartPoint] = useState<{ lat: number; lng: number } | null>(null);
+  const [endPoint, setEndPoint] = useState<{ lat: number; lng: number } | null>(null);
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate('/auth');
+    }
+  }, [user, loading, navigate]);
+
+  const handleSaveRoute = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to save routes.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!routeName.trim()) {
+      toast({
+        title: "Route Name Required",
+        description: "Please enter a name for your route.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!startPoint || !endPoint) {
+      toast({
+        title: "Route Points Missing",
+        description: "Please set both start and end points on the map.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      const { data, error } = await supabase
+        .from('routes')
+        .insert({
+          user_id: user.id,
+          name: routeName,
+          description: description || null,
+          start_lat: startPoint.lat,
+          start_lng: startPoint.lng,
+          end_lat: endPoint.lat,
+          end_lng: endPoint.lng,
+          difficulty_level: difficulty,
+          is_public: isPublic,
+          tags: tags,
+          // For now, we'll calculate distance as simple Euclidean distance
+          // In a real app, you'd use proper route calculation
+          distance: calculateDistance(startPoint, endPoint),
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Route Saved!",
+        description: "Your route has been successfully created.",
+      });
+
+      // Navigate to explore tracks or back to home
+      navigate('/explore-tracks');
+    } catch (error: any) {
+      console.error('Error saving route:', error);
+      toast({
+        title: "Error Saving Route",
+        description: error.message || "An error occurred while saving your route.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Simple distance calculation (in kilometers)
+  const calculateDistance = (point1: { lat: number; lng: number }, point2: { lat: number; lng: number }) => {
+    const R = 6371; // Earth's radius in kilometers
+    const dLat = (point2.lat - point1.lat) * Math.PI / 180;
+    const dLon = (point2.lng - point1.lng) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(point1.lat * Math.PI / 180) * Math.cos(point2.lat * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return Number((R * c).toFixed(2));
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 animate-spin rounded-full border-2 border-primary border-t-transparent mx-auto mb-4"></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Navigation */}
@@ -40,172 +150,119 @@ const CreateTrack = () => {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <Button variant="outline" size="sm">Profile</Button>
-            <Button variant="racing" size="sm">
-              <Plus className="w-4 h-4" />
-              New Track
+            <span className="text-sm text-muted-foreground hidden sm:block">
+              Welcome, {user.email}
+            </span>
+            <Button variant="outline" size="sm" onClick={signOut}>
+              <LogOut className="w-4 h-4 mr-2" />
+              Sign Out
             </Button>
           </div>
         </div>
       </nav>
 
       <div className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold mb-2">Create New Track</h1>
+          <p className="text-muted-foreground">
+            Design your custom racing route by clicking points on the map
+          </p>
+        </div>
+
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Map Area */}
           <div className="lg:col-span-2">
-            <div className="bg-card border border-border/40 rounded-lg overflow-hidden shadow-card">
-              {/* Map Controls */}
-              <div className="p-4 border-b border-border/40 bg-card/50">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-semibold text-foreground">Create Your Track</h2>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">
-                      <Target className="w-3 h-3 mr-1" />
-                      Start Point
-                    </Badge>
-                    <Badge variant="outline" className="bg-accent/10 text-accent border-accent/30">
-                      <Flag className="w-3 h-3 mr-1" />
-                      Finish Line
-                    </Badge>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input 
-                      placeholder="Search for a location..."
-                      className="pl-10 bg-background/50"
-                    />
-                  </div>
-                  <Button variant="outline" size="sm">
-                    <Navigation className="w-4 h-4" />
-                    My Location
-                  </Button>
-                </div>
-              </div>
-
-              {/* Map Placeholder */}
-              <MapBox />
-
-              {/* Map Instructions */}
-              <div className="p-4 bg-muted/30">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <div className="w-2 h-2 bg-primary rounded-full"></div>
-                    Click to set start
-                  </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <div className="w-2 h-2 bg-accent rounded-full"></div>
-                    Drag to create route
-                  </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <div className="w-2 h-2 bg-racing-warning rounded-full"></div>
-                    Set finish line
-                  </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <div className="w-2 h-2 bg-racing-success rounded-full"></div>
-                    Save & publish
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Track Details Panel */}
-          <div className="space-y-6">
-            {/* Track Information */}
-            <Card className="p-6 bg-card/50 backdrop-blur-sm border-border/40">
-              <h3 className="text-lg font-semibold mb-4 text-foreground">Track Details</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-2 block">Track Name</label>
-                  <Input placeholder="My Awesome Track" className="bg-background/50" />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-2 block">Description</label>
-                  <Input placeholder="A challenging route through..." className="bg-background/50" />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-sm font-medium text-foreground mb-2 block">Distance</label>
-                    <div className="flex items-center gap-2 p-2 bg-background/50 rounded-md border border-border/40">
-                      <Ruler className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">Auto-calculated</span>
+            <Card className="overflow-hidden">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  Create Your Track
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 bg-primary rounded-full"></div>
+                      Start
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 bg-accent rounded-full"></div>
+                      Finish
                     </div>
                   </div>
-                  <div>
-                    <label className="text-sm font-medium text-foreground mb-2 block">Difficulty</label>
-                    <select className="w-full p-2 bg-background/50 rounded-md border border-border/40 text-sm">
-                      <option>Easy</option>
-                      <option>Medium</option>
-                      <option>Hard</option>
-                      <option>Expert</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
+                </CardTitle>
+                <CardDescription>
+                  Click on the map to set your start point, then click again to set the finish line
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <MapBox />
+              </CardContent>
             </Card>
 
             {/* Track Stats Preview */}
-            <Card className="p-6 bg-card/50 backdrop-blur-sm border-border/40">
-              <h3 className="text-lg font-semibold mb-4 text-foreground">Preview Stats</h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Timer className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Estimated Time</span>
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle>Track Preview</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="text-center">
+                    <Timer className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                    <div className="text-sm text-muted-foreground">Estimated Time</div>
+                    <div className="font-medium">
+                      {startPoint && endPoint ? 
+                        `${Math.round(calculateDistance(startPoint, endPoint) * 5)} min` : 
+                        '--:--'
+                      }
+                    </div>
                   </div>
-                  <span className="text-sm font-medium text-foreground">--:--</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Ruler className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Total Distance</span>
+                  <div className="text-center">
+                    <Ruler className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                    <div className="text-sm text-muted-foreground">Distance</div>
+                    <div className="font-medium">
+                      {startPoint && endPoint ? 
+                        `${calculateDistance(startPoint, endPoint)} km` : 
+                        '-- km'
+                      }
+                    </div>
                   </div>
-                  <span className="text-sm font-medium text-foreground">-- km</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Target className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Elevation</span>
+                  <div className="text-center">
+                    <MapPin className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                    <div className="text-sm text-muted-foreground">Start Set</div>
+                    <div className="font-medium">{startPoint ? '✓' : '✗'}</div>
                   </div>
-                  <span className="text-sm font-medium text-foreground">-- m</span>
+                  <div className="text-center">
+                    <Flag className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                    <div className="text-sm text-muted-foreground">Finish Set</div>
+                    <div className="font-medium">{endPoint ? '✓' : '✗'}</div>
+                  </div>
                 </div>
-              </div>
+              </CardContent>
             </Card>
+          </div>
 
-            {/* Actions */}
-            <div className="space-y-3">
-              <Button variant="racing" className="w-full">
-                <Flag className="w-4 h-4" />
-                Save & Publish Track
-              </Button>
-              <Button variant="outline" className="w-full">
-                Save as Draft
-              </Button>
-            </div>
-
-            {/* Popular Tracks */}
-            <Card className="p-6 bg-card/50 backdrop-blur-sm border-border/40">
-              <h3 className="text-lg font-semibold mb-4 text-foreground">Popular Nearby</h3>
-              <div className="space-y-3">
-                {[
-                  { name: "City Center Sprint", distance: "2.1 km", users: 234 },
-                  { name: "Park Loop Challenge", distance: "5.8 km", users: 189 },
-                  { name: "Riverside Marathon", distance: "10.5 km", users: 156 }
-                ].map((track, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-background/30 rounded-lg border border-border/20 hover:bg-background/50 transition-colors cursor-pointer">
-                    <div>
-                      <div className="font-medium text-sm text-foreground">{track.name}</div>
-                      <div className="text-xs text-muted-foreground">{track.distance}</div>
-                    </div>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Users className="w-3 h-3" />
-                      {track.users}
-                    </div>
-                  </div>
-                ))}
-              </div>
+          {/* Route Details Panel */}
+          <div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Route Details</CardTitle>
+                <CardDescription>
+                  Configure your route settings and metadata
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <RouteForm
+                  routeName={routeName}
+                  setRouteName={setRouteName}
+                  description={description}
+                  setDescription={setDescription}
+                  difficulty={difficulty}
+                  setDifficulty={setDifficulty}
+                  isPublic={isPublic}
+                  setIsPublic={setIsPublic}
+                  tags={tags}
+                  setTags={setTags}
+                  onSave={handleSaveRoute}
+                  saving={saving}
+                />
+              </CardContent>
             </Card>
           </div>
         </div>
